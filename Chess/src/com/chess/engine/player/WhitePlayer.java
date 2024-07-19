@@ -15,7 +15,7 @@ public class WhitePlayer extends Player{
                        final Collection<Move> whiteStandardLegalMoves,
                        final Collection<Move> blackStandardLegalMoves) {
         super(board, whiteStandardLegalMoves, blackStandardLegalMoves); /* in the player class it takes in legal moves
-        (your moves) and then the opponents moves. for the white pieces your moves are the white moves and the oppenent
+        (your moves) and then the opponents moves. for the white pieces your moves are the white moves and the opponent
         is the black moves*/
     }
     @Override
@@ -30,7 +30,7 @@ public class WhitePlayer extends Player{
 
     @Override
     public Player getOpponent() {
-        return this.board.whitePlayer();
+        return this.board.blackPlayer();
     }
 
     @Override
@@ -47,8 +47,7 @@ public class WhitePlayer extends Player{
                     if(Player.calculateAttacksOnTile(61, opponentsLegals).isEmpty() &&
                        Player.calculateAttacksOnTile(62, opponentsLegals).isEmpty() &&
                        rookTile.getPiece().getPieceType().isRook()){
-                        //TODO add a castle move
-                        kingCastles.add(new Move.KingSideCastleMove(this.board,
+                       kingCastles.add(new Move.KingSideCastleMove(this.board,
                                                                     this.playerKing,
                                                    62,
                                                                     (Rook)rookTile.getPiece(),
@@ -67,8 +66,7 @@ public class WhitePlayer extends Player{
                     if(Player.calculateAttacksOnTile(58, opponentsLegals).isEmpty() &&
                        Player.calculateAttacksOnTile(59, opponentsLegals).isEmpty() &&
                        rookTile.getPiece().getPieceType().isRook()){
-                        //TODO add a castle move
-                        kingCastles.add(new Move.QueenSideCastleMove(this.board,
+                       kingCastles.add(new Move.QueenSideCastleMove(this.board,
                                                                     this.playerKing,
                                                    58,
                                                                     (Rook)rookTile.getPiece(),
