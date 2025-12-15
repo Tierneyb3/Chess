@@ -2,7 +2,6 @@ package com.chess.gui;
 
 import com.chess.engine.board.Board;
 import com.chess.engine.board.Move;
-import com.chess.engine.board.Tile;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -10,24 +9,78 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.chess.gui.Table.*;
+
 public class GameHistoryPanel extends JPanel {
 
     private final DataModel model;
     private final JScrollPane scrollPane;
     private static final Dimension HISTORY_PANEL_DIMENSION = new Dimension(100, 400);
+    private final JTable table;
     GameHistoryPanel() {
         this.setLayout(new BorderLayout());
         this.model = new DataModel();
-        final JTable table = new JTable(model);
+        this.table = new JTable(model);
         table.setRowHeight(15);
+        this.table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 1) {
+
+                    int row = table.rowAtPoint(e.getPoint());
+                    int col = table.columnAtPoint(e.getPoint());
+                    if (row < 0 || col < 0) return;
+
+                    Object val = table.getValueAt(row, col);
+                    if (val == null || val.toString().trim().isEmpty()) return;
+
+                    int plyAfterMove;
+                    if (col == 0) {
+                        plyAfterMove = row * 2 + 1;
+                    } else if (col == 1) {
+                        plyAfterMove = row * 2 + 2;
+                    } else {
+                        return;
+                    }
+
+                    Table.get().showPositionAtPly(plyAfterMove);
+                }
+            }
+        });
         this.scrollPane = new JScrollPane(table);
         scrollPane.setColumnHeaderView(table.getTableHeader());
         scrollPane.setPreferredSize(HISTORY_PANEL_DIMENSION);
         this.add(scrollPane, BorderLayout.CENTER);
+        final JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+        final JButton prevButton = new JButton("<");
+        final JButton nextButton = new JButton(">");
+
+        prevButton.addActionListener(e -> {
+            // step back one ply
+            Table.get().stepHistory(-1);
+        });
+
+        nextButton.addActionListener(e -> {
+            // step forward one ply
+            Table.get().stepHistory(1);
+        });
+
+        navPanel.add(prevButton);
+        navPanel.add(nextButton);
+
+        this.add(navPanel, BorderLayout.SOUTH);
         setVisible(true);
     }
-
-    void redo(final Board board, final Table.MoveLog moveHistory){
+    void highlightMoveRow(final int plyIndex){
+        if (plyIndex < 0) return;
+        // Each row is one pair of moves (White/Black), so row = plyIndex / 2
+        int row = plyIndex / 2;
+        if (row >= model.getRowCount()) return;
+        table.getSelectionModel().setSelectionInterval(row, row);
+        table.scrollRectToVisible(table.getCellRect(row, 0, true));
+    }
+    void printMoveHistoryText(final Board board, final MoveLog moveHistory){
 
         int currentRow = 0;
         this.model.clear();
@@ -139,9 +192,7 @@ public class GameHistoryPanel extends JPanel {
         private String whiteMove;
         private String blackMove;
 
-        Row(){
-
-        }
+        Row(){}
 
         public String getWhiteMove(){
             return this.whiteMove;
