@@ -286,7 +286,7 @@ public class Table extends Observable {
         this.evaluationPanel.reset();
         this.evaluationPanel.updateEvaluation(chessBoard);
     }
-    //Need to import full San Library and matching parserw
+    //Need to import full San Library and matching parser
     /*private void loadGameFromPGN(final String pgnText) {
 
         // Reset game state
@@ -696,7 +696,7 @@ public class Table extends Observable {
     }
 
     // =============================================================
-    // A
+    // AI
     // =============================================================
 
 
@@ -1050,3 +1050,4 @@ public class Table extends Observable {
     }
 
 }
+
