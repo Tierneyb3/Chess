@@ -3,106 +3,225 @@ package com.chess.engine.player.ai;
 import com.chess.engine.board.Board;
 import com.chess.engine.board.Move;
 import com.chess.engine.player.MoveTransition;
-
-public class MiniMax implements MoveStrategy{
+import com.chess.gui.Table;
+public final class MiniMax implements MoveStrategy {
 
     private final BoardEvaluator boardEvaluator;
     private final int searchDepth;
 
-    public MiniMax(final int searchDepth){
+    public MiniMax(final int searchDepth) {
         this.boardEvaluator = new StandardBoardEvaluator();
         this.searchDepth = searchDepth;
     }
 
     @Override
-    public String toString() {
-        return "MiniMax";
+    public Move execute(final Board board) {
+
+        if (this.searchDepth <= 1) {
+            return executeOnePlyGreedy(board);   // EASY
+        } else if (this.searchDepth == 2) {
+            return executeTwoPly(board, 150);     // MEDIUM
+        } else {
+            return executeTwoPly(board, 50);      // HARD
+        }
     }
+    private Move executeOnePlyGreedy(final Board board) {
 
-    @Override
-    public Move execute(Board board) {
+        final boolean isWhiteToMove = board.currentPlayer().getAlliance().isWhite();
 
-        final long startTime = System.currentTimeMillis();
+        final int currentEval = this.boardEvaluator.evaluate(board, 0);
+        final int currentScoreForMover = isWhiteToMove ? currentEval : -currentEval;
 
-        Move bestMove = null;
+        Move bestNonDrawMove = null;
+        int bestNonDrawScore = Integer.MIN_VALUE;
 
-        int highestSeenValue = Integer.MIN_VALUE;
-        int lowestSeenValue = Integer.MAX_VALUE;
-        int currentValue;
-        System.out.println(board.currentPlayer() + " THINKING with Depth " + this.searchDepth);
+        Move bestDrawMove = null;
+        int bestDrawScore = Integer.MIN_VALUE;
 
-        int numMoves = board.currentPlayer().getLegalMoves().size();
-        for(final Move move : board.currentPlayer().getLegalMoves()){
+        Move anyLegalMove = null;
+
+        for (final Move move : board.currentPlayer().getLegalMoves()) {
+
+            if (anyLegalMove == null) {
+                anyLegalMove = move;
+            }
+
             final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
-            //we want to use the board that we have transitioned to as the starting point for our min or max function
-            if(moveTransition.getMoveStatus().isDone()){
-                currentValue = board.currentPlayer().getAlliance().isWhite() ?
-                        //if the current player is white, go into the minimizing function next due to that being the function
-                        //we call for black, otherwise, if its not the white player next call the maximizing function
-                        min(moveTransition.getTransitionBoard(), this.searchDepth -1):
-                        max(moveTransition.getTransitionBoard(), this.searchDepth -1);
+            if (!moveTransition.getMoveStatus().isDone()) {
+                continue;
+            }
 
-                if(board.currentPlayer().getAlliance().isWhite() && currentValue >= highestSeenValue){
-                    highestSeenValue = currentValue;
-                    bestMove = move;
-                } else if(board.currentPlayer().getAlliance().isBlack() && currentValue <= lowestSeenValue){
-                    lowestSeenValue = currentValue;
-                    bestMove = move;
+            final Board transitionBoard = moveTransition.getTransitionBoard();
+
+            final int eval = this.boardEvaluator.evaluate(transitionBoard, 0);
+            int scoreForMover = isWhiteToMove ? eval : -eval;
+
+            // checkmate of opponent
+            if (transitionBoard.currentPlayer().isInCheckMate()) {
+                scoreForMover += 100_000;
+                if (scoreForMover > bestNonDrawScore) {
+                    bestNonDrawScore = scoreForMover;
+                    bestNonDrawMove = move;
                 }
+                continue;
+            }
+
+            // threefold repetition?
+            if (Table.get().wouldBeThreefold(transitionBoard)) {
+                if (currentScoreForMover > 0) {
+                    // if we're winning, don't repeat
+                    continue;
+                }
+                if (scoreForMover > bestDrawScore) {
+                    bestDrawScore = scoreForMover;
+                    bestDrawMove = move;
+                }
+                continue;
+            }
+
+            // stalemate?
+            if (transitionBoard.currentPlayer().isInStaleMate()) {
+                if (scoreForMover > bestDrawScore) {
+                    bestDrawScore = scoreForMover;
+                    bestDrawMove = move;
+                }
+                continue;
+            }
+
+            // normal move
+            if (scoreForMover > bestNonDrawScore) {
+                bestNonDrawScore = scoreForMover;
+                bestNonDrawMove = move;
             }
         }
 
-        final long executionTime = System.currentTimeMillis() - startTime;
-
-        return bestMove;
+        if (bestNonDrawMove != null) return bestNonDrawMove;
+        if (bestDrawMove != null) return bestDrawMove;
+        return anyLegalMove;
     }
 
-    public int min(final Board board,
-                   final int depth) {
-        if(depth == 0 /* || gameOver*/){
-            return this.boardEvaluator.evaluate(board, depth);
-        }
-        int lowestSeenValue = Integer.MAX_VALUE;
-        /*sets this value high at first so we never would have to worry about this number accidently not over writing*/
-        for(final Move move : board.currentPlayer().getLegalMoves()){
-            //finds the legal moves and then actually makes all those moves
+
+    private Move executeTwoPly(final Board board, final int margin) {
+
+        final boolean isWhiteToMove = board.currentPlayer().getAlliance().isWhite();
+
+        final int currentEval = this.boardEvaluator.evaluate(board, 0);
+        final int currentScoreForMover = isWhiteToMove ? currentEval : -currentEval;
+
+        Move bestNonDrawMove = null;
+        int bestNonDrawScore = Integer.MIN_VALUE;
+
+        Move bestDrawMove = null;
+        int bestDrawScore = Integer.MIN_VALUE;
+
+        Move anyLegalMove = null;
+
+        final java.util.Map<Move, Integer> nonDrawScores = new java.util.HashMap<>();
+
+        for (final Move move : board.currentPlayer().getLegalMoves()) {
+
+            if (anyLegalMove == null) {
+                anyLegalMove = move;
+            }
+
             final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
-            if(moveTransition.getMoveStatus().isDone()) {
-                //then checks the value of our board evaluator and sees what number its at,
-                // and then loops through to find the lowest number at the interation
-                final int currentValue = max(moveTransition.getTransitionBoard(), depth -1);
-                if(currentValue <= lowestSeenValue){
-                    lowestSeenValue = currentValue;//and then records that number here
+            if (!moveTransition.getMoveStatus().isDone()) {
+                continue;
+            }
+
+            final Board transitionBoard = moveTransition.getTransitionBoard();
+
+            final int baseEval = this.boardEvaluator.evaluate(transitionBoard, 0);
+            final int scoreForMover = isWhiteToMove ? baseEval : -baseEval;
+
+            // 1) mate
+            if (transitionBoard.currentPlayer().isInCheckMate()) {
+                int mateScore = scoreForMover + 100_000;
+                nonDrawScores.put(move, mateScore);
+                if (mateScore > bestNonDrawScore) {
+                    bestNonDrawScore = mateScore;
+                    bestNonDrawMove = move;
+                }
+                continue;
+            }
+
+            // 2) threefold
+            if (Table.get().wouldBeThreefold(transitionBoard)) {
+                if (currentScoreForMover > 0) {
+                    continue; // refuse repetition when better
+                }
+                if (scoreForMover > bestDrawScore) {
+                    bestDrawScore = scoreForMover;
+                    bestDrawMove = move;
+                }
+                continue;
+            }
+
+            // 3) stalemate
+            if (transitionBoard.currentPlayer().isInStaleMate()) {
+                if (scoreForMover > bestDrawScore) {
+                    bestDrawScore = scoreForMover;
+                    bestDrawMove = move;
+                }
+                continue;
+            }
+
+            // 4) simulate opponent reply (2-ply)
+            int worstReplyScore = Integer.MAX_VALUE;
+
+            for (final Move oppMove : transitionBoard.currentPlayer().getLegalMoves()) {
+
+                final MoveTransition oppTransition =
+                        transitionBoard.currentPlayer().makeMove(oppMove);
+
+                if (!oppTransition.getMoveStatus().isDone()) {
+                    continue;
+                }
+
+                final Board replyBoard = oppTransition.getTransitionBoard();
+
+                final int replyEval = this.boardEvaluator.evaluate(replyBoard, 0);
+                final int scoreForMoverIfThisReply =
+                        isWhiteToMove ? replyEval : -replyEval;
+
+                if (scoreForMoverIfThisReply < worstReplyScore) {
+                    worstReplyScore = scoreForMoverIfThisReply;
                 }
             }
-        }
-        return lowestSeenValue;
-    }
 
-    public static boolean isEndGameScenario (Board board){
-        return board.currentPlayer().isInCheckMate() ||
-               board.currentPlayer().isInStaleMate();
-    }
+            if (worstReplyScore == Integer.MAX_VALUE) {
+                worstReplyScore = scoreForMover;
+            }
 
-    public int max(final Board board,
-                   final int depth){
-        if(depth == 0 || isEndGameScenario(board)){
-            return this.boardEvaluator.evaluate(board, depth);
-        }
-        int highestSeenValue = Integer.MIN_VALUE;
-        /*sets this value low at first so we never would have to worry about this number accidently not over writing*/
-        for(final Move move : board.currentPlayer().getLegalMoves()){
-            //finds the legal moves and then actually makes all of those moves
-            final MoveTransition moveTransition = board.currentPlayer().makeMove(move);
-            if(moveTransition.getMoveStatus().isDone()) {
-                //then checks the value of our board evaluator and sees what number its at,
-                // and then loops through to find the highest number at the interation
-                final int currentValue = min(moveTransition.getTransitionBoard(), depth -1);
-                if(currentValue >= highestSeenValue){
-                    highestSeenValue = currentValue;//and the records that number here
-                }
+            nonDrawScores.put(move, worstReplyScore);
+
+            if (worstReplyScore > bestNonDrawScore) {
+                bestNonDrawScore = worstReplyScore;
+                bestNonDrawMove = move;
             }
         }
-        return highestSeenValue;
+
+        if (bestNonDrawMove != null && !nonDrawScores.isEmpty()) {
+
+            java.util.List<Move> candidates = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<Move, Integer> entry : nonDrawScores.entrySet()) {
+                if (entry.getValue() >= bestNonDrawScore - margin) {
+                    candidates.add(entry.getKey());
+                }
+            }
+
+            if (!candidates.isEmpty()) {
+                java.util.Random rng = new java.util.Random();
+                return candidates.get(rng.nextInt(candidates.size()));
+            }
+
+            return bestNonDrawMove;
+        }
+
+        if (bestDrawMove != null) {
+            return bestDrawMove;
+        }
+
+        return anyLegalMove;
     }
 }
