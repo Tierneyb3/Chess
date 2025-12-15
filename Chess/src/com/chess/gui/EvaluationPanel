@@ -1,0 +1,79 @@
+package com.chess.gui;
+
+import com.chess.engine.board.Board;
+import com.chess.engine.player.ai.StandardBoardEvaluator;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class EvaluationPanel extends JPanel {
+
+    private final JProgressBar evalBar;
+    private final StandardBoardEvaluator evaluator;
+    private boolean firstUpdate = true;  // for the initial ~0.3 edge
+
+    public EvaluationPanel() {
+        super(new BorderLayout());
+        this.evaluator = new StandardBoardEvaluator();
+
+        // Vertical bar: 0..200, 100 = equal
+        this.evalBar = new JProgressBar(SwingConstants.VERTICAL, 0, 200);
+        this.evalBar.setValue(100);
+        this.evalBar.setStringPainted(true);
+        this.evalBar.setString("=");
+
+        add(this.evalBar, BorderLayout.CENTER);
+        setPreferredSize(new Dimension(40, 400));
+
+        // Now always invisible; we’ll just keep updating it
+        setVisible(false);
+    }
+
+    public void reset() {
+        this.firstUpdate = true;
+        this.evalBar.setValue(100);
+        this.evalBar.setString("=");
+    }
+
+    public void updateEvaluation(final Board board) {
+        if (!Table.get().isGameOver()) {
+            setVisible(false);
+            return;
+        }
+        setVisible(true);
+        int rawScore = this.evaluator.evaluate(board, 0); // >0 = white better
+
+        // Give White a tiny initial edge (like chess.com’s +0.3)
+        if (firstUpdate) {
+            rawScore = 30; // ~ +0.3
+            firstUpdate = false;
+        }
+
+        // === Mate indicator ===
+        final int MATE_THRESHOLD = 1000; // tweak if you want 100 instead
+        if (Math.abs(rawScore) >= MATE_THRESHOLD) {
+            // push bar to one extreme
+            evalBar.setValue(rawScore > 0 ? 200 : 0);
+            evalBar.setString(rawScore > 0 ? "M:White" : "M:Black");
+            return;
+        }
+
+        // === Normal eval mapping ===
+        final int MAX_EVAL = 500; // clamp to ±5 pawns for the bar scale
+        int clamped = Math.max(-MAX_EVAL, Math.min(MAX_EVAL, rawScore));
+
+        // map [-MAX_EVAL, MAX_EVAL] -> [0, 200] with 100 = equal
+        int value = 100 + (int)Math.round((clamped / (double)MAX_EVAL) * 100.0);
+        value = Math.max(0, Math.min(200, value));
+        evalBar.setValue(value);
+
+        // Label string: '=', +x.x or -x.x
+        if (Math.abs(rawScore) < 25) { // roughly equal
+            evalBar.setString("=");
+        } else {
+            evalBar.setString(String.format("%s%.1f",
+                    rawScore > 0 ? "+" : "-",
+                    Math.abs(rawScore) / 100.0));
+        }
+    }
+}
