@@ -1,0 +1,36 @@
+package com.chess.gui;
+
+import com.chess.engine.board.Board;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class RepetitionTracker {
+
+    private final Map<String, Integer> repetitionCounts = new HashMap<>();
+
+    // Build a key for the board position — you can improve this later if needed
+    private String boardKey(final Board board) {
+        return board.toString(); // simplest version for now
+    }
+
+    public void reset() {
+        repetitionCounts.clear();
+    }
+
+    public void recordPosition(final Board board) {
+        final String key = boardKey(board);
+        repetitionCounts.put(key, repetitionCounts.getOrDefault(key, 0) + 1);
+    }
+
+    public boolean isThreefold(final Board board) {
+        final String key = boardKey(board);
+        return repetitionCounts.getOrDefault(key, 0) >= 3;
+    }
+
+    public boolean wouldBeThreefold(final Board board) {
+        final String key = boardKey(board);
+        return (repetitionCounts.getOrDefault(key, 0) + 1) >= 3;
+    }
+}
+
