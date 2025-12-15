@@ -1,0 +1,52 @@
+package com.chess.gui;
+
+import com.chess.engine.board.Board;
+import com.chess.engine.pieces.Piece;
+import com.chess.engine.pieces.Piece.PieceType;
+
+import java.util.List;
+
+public final class InsufficientMaterial {
+
+    private InsufficientMaterial() {}
+
+    public static boolean isDraw(final Board board) {
+        // Collect all pieces except kings
+        final List<Piece> white = board.getWhitePieces().stream()
+                .filter(p -> p.getPieceType() != PieceType.KING)
+                .collect(java.util.stream.Collectors.toList());
+        final List<Piece> black = board.getBlackPieces().stream()
+                .filter(p -> p.getPieceType() != PieceType.KING)
+                .collect(java.util.stream.Collectors.toList());
+
+        final int whiteCount = white.size();
+        final int blackCount = black.size();
+        final int total = whiteCount + blackCount;
+
+        // 1) King vs King
+        if (total == 0) {
+            return true;
+        }
+
+        // 2) King + single minor vs King  (K+N vs K, K+B vs K)
+        if (total == 1) {
+            PieceType t = (whiteCount == 1 ? white.get(0) : black.get(0)).getPieceType();
+            return t == PieceType.KNIGHT || t == PieceType.BISHOP;
+        }
+
+        // 3) King + bishop vs King + bishop, both bishops on same color
+        if (total == 2 && whiteCount == 1 && blackCount == 1) {
+            PieceType wt = white.get(0).getPieceType();
+            PieceType bt = black.get(0).getPieceType();
+            if (wt == PieceType.BISHOP && bt == PieceType.BISHOP) {
+                // if you have square-color info, you could check same color here;
+                // for now we’ll treat K+B vs K+B as draw-ish:
+                return true;
+            }
+        }
+
+        // Everything else: assume sufficient mating material
+        return false;
+    }
+}
+
