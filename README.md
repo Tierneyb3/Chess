@@ -99,20 +99,35 @@ AI, evaluation, GUI, and game state tracking are cleanly separated.
 
 📁 Project Structure
 com.chess
+
 ├── engine
+
 │   ├── board        # Board, Move, Tile, transitions
+
 │   ├── pieces       # All chess pieces
+
 │   ├── player       # Human & AI players
+
 │   └── ai           # Minimax, evaluators, difficulty logic
-│
+
+
+
 ├── gui
+
 │   ├── Table                # Central controller
+
 │   ├── BoardPanel           # Board rendering & animation
+
 │   ├── TilePanel            # Individual squares
+
 │   ├── GameHistoryPanel     # Move list & navigation
+
 │   ├── TakenPiecesPanel
+
 │   ├── EvaluationPanel
+
 │   └── GameSetup            # Setup dialog
+
 │
 └── JChess.java               # Entry point
 
@@ -125,7 +140,6 @@ IntelliJ IDEA (recommended)
 
 Run
 com.chess.JChess
-
 
 Use Game → Setup Game to configure players and AI difficulty.
 
@@ -147,10 +161,7 @@ SAN/PGN parsing code is intentionally retained (commented/partial) for future ex
 
 This project was built incrementally with a focus on correctness, maintainability, and real-world chess behavior.
 
-📷 Screenshots / Demo
-
-(Optional: add screenshots or a GIF here for GitHub presentation)
-
 📄 License
 
 This project is for educational and personal use.
+
